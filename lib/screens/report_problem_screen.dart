@@ -75,22 +75,53 @@ class _ReportProblemScreenState extends State<ReportProblemScreen> {
   }
 
   Future<void> _chooseImageSource() async {
+    final scheme = Theme.of(context).colorScheme;
     final source = await showModalBottomSheet<ImageSource>(
       context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
       builder: (context) => SafeArea(
-        child: Wrap(
-          children: <Widget>[
-            ListTile(
-              leading: const Icon(Icons.photo_camera_outlined),
-              title: const Text('Take photo'),
-              onTap: () => Navigator.pop(context, ImageSource.camera),
-            ),
-            ListTile(
-              leading: const Icon(Icons.photo_library_outlined),
-              title: const Text('Choose from gallery'),
-              onTap: () => Navigator.pop(context, ImageSource.gallery),
-            ),
-          ],
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              Container(
+                width: 36,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: scheme.onSurfaceVariant.withValues(alpha: 0.3),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: 12),
+              ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: scheme.primary.withValues(alpha: 0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(Icons.photo_camera_outlined, color: scheme.primary),
+                ),
+                title: const Text('Take photo'),
+                onTap: () => Navigator.pop(context, ImageSource.camera),
+              ),
+              ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: scheme.primary.withValues(alpha: 0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(Icons.photo_library_outlined, color: scheme.primary),
+                ),
+                title: const Text('Choose from gallery'),
+                onTap: () => Navigator.pop(context, ImageSource.gallery),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -111,12 +142,17 @@ class _ReportProblemScreenState extends State<ReportProblemScreen> {
     if (!_formKey.currentState!.validate()) return;
     if (_room == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Select a laboratory first.')),
+        const SnackBar(
+          behavior: SnackBarBehavior.floating,
+          content: Text('Select a laboratory first.'),
+        ),
       );
       return;
     }
 
+    FocusScope.of(context).unfocus();
     setState(() => _sending = true);
+
     try {
       final result = await ApiService.instance.createReport(
         roomId: _room!.id,
@@ -127,34 +163,84 @@ class _ReportProblemScreenState extends State<ReportProblemScreen> {
       );
 
       if (!mounted) return;
+      final scheme = Theme.of(context).colorScheme;
+
       await showDialog<void>(
         context: context,
         barrierDismissible: false,
         builder: (context) => AlertDialog(
-          icon: const Icon(Icons.check_circle_outline, size: 46),
-          title: Text(result.duplicate ? 'Report Already Exists' : 'Report Submitted'),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
+          ),
+          icon: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: scheme.primary.withValues(alpha: 0.1),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              result.duplicate
+                  ? Icons.info_outline_rounded
+                  : Icons.check_circle_outline_rounded,
+              size: 42,
+              color: scheme.primary,
+            ),
+          ),
+          title: Text(
+            result.duplicate ? 'Report Already Exists' : 'Report Submitted',
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontWeight: FontWeight.w800),
+          ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: <Widget>[
-              Text(
-                result.code,
-                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.w900,
-                    ),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                decoration: BoxDecoration(
+                  color: scheme.surfaceContainerLow,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: scheme.outlineVariant.withValues(alpha: 0.5),
+                  ),
+                ),
+                child: Text(
+                  result.code,
+                  style: TextStyle(
+                    color: scheme.primary,
+                    fontSize: 20,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 1.5,
+                  ),
+                ),
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 14),
               Text(
                 result.duplicate
-                    ? 'The same unresolved report was recently submitted. Syswatch kept the existing report instead of creating a duplicate.'
-                    : 'Your report has been sent to ITSO. You can track its status under My Reports.',
+                    ? 'An unresolved report for this issue was recently submitted. SysWatch kept the existing report to prevent duplicate tickets.'
+                    : 'Your report has been sent to ITSO. You can track its progress under My Reports.',
                 textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: scheme.onSurfaceVariant,
+                  fontSize: 13.5,
+                  height: 1.45,
+                ),
               ),
             ],
           ),
           actions: <Widget>[
-            FilledButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('View My Reports'),
+            SizedBox(
+              width: double.infinity,
+              height: 48,
+              child: FilledButton(
+                onPressed: () => Navigator.pop(context),
+                style: FilledButton.styleFrom(
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: const Text('View My Reports'),
+              ),
             ),
           ],
         ),
@@ -171,12 +257,18 @@ class _ReportProblemScreenState extends State<ReportProblemScreen> {
     } on ApiException catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.message)),
+        SnackBar(
+          behavior: SnackBarBehavior.floating,
+          content: Text(e.message),
+        ),
       );
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('$e')),
+        SnackBar(
+          behavior: SnackBarBehavior.floating,
+          content: Text('$e'),
+        ),
       );
     } finally {
       if (mounted) setState(() => _sending = false);
@@ -185,23 +277,477 @@ class _ReportProblemScreenState extends State<ReportProblemScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (_loading) return const Center(child: CircularProgressIndicator());
+    final scheme = Theme.of(context).colorScheme;
+
+    if (_loading) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            CircularProgressIndicator(color: scheme.primary, strokeWidth: 2.5),
+            const SizedBox(height: 16),
+            Text(
+              'Loading laboratory stations...',
+              style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 13),
+            ),
+          ],
+        ),
+      );
+    }
 
     if (_loadError != null) {
       return Center(
-        child: Padding(
+        child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 420),
+            child: Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: scheme.surfaceContainerLow,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: scheme.outlineVariant.withValues(alpha: 0.6),
+                ),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: <Widget>[
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: scheme.errorContainer.withValues(alpha: 0.5),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.wifi_off_rounded,
+                      size: 38,
+                      color: scheme.error,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Connection Error',
+                    style: TextStyle(
+                      color: scheme.onSurface,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    _loadError!,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: scheme.onSurfaceVariant,
+                      fontSize: 13.5,
+                      height: 1.4,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 48,
+                    child: FilledButton.icon(
+                      onPressed: _loadLabs,
+                      icon: const Icon(Icons.refresh_rounded, size: 18),
+                      label: const Text('Try Again'),
+                      style: FilledButton.styleFrom(
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 520),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: <Widget>[
+                // Header Banner
+                _buildHeaderCard(scheme),
+                const SizedBox(height: 18),
+
+                // Card 1: Location Selection
+                _buildCardContainer(
+                  scheme: scheme,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: <Widget>[
+                      _buildSectionTitle(
+                        scheme: scheme,
+                        stepNumber: '1',
+                        title: 'Laboratory Location',
+                        subtitle: 'Select the affected laboratory room and computer.',
+                      ),
+                      const SizedBox(height: 18),
+
+                      // Laboratory Room Dropdown
+                      DropdownButtonFormField<LabRoom>(
+                        initialValue: _room,
+                        isExpanded: true,
+                        decoration: InputDecoration(
+                          labelText: 'Laboratory Room',
+                          hintText: 'Select lab room',
+                          prefixIcon: const Icon(Icons.science_outlined, size: 20),
+                          filled: true,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        items: _rooms
+                            .map(
+                              (room) => DropdownMenuItem<LabRoom>(
+                                value: room,
+                                child: Text('Laboratory ${room.name}'),
+                              ),
+                            )
+                            .toList(),
+                        onChanged: _sending
+                            ? null
+                            : (room) => setState(() {
+                                  _room = room;
+                                  _pc = null;
+                                }),
+                        validator: (value) =>
+                            value == null ? 'Please select a laboratory.' : null,
+                      ),
+                      const SizedBox(height: 14),
+
+                      // Workstation/PC Dropdown
+                      DropdownButtonFormField<LabPc?>(
+                        initialValue: _pc,
+                        isExpanded: true,
+                        decoration: InputDecoration(
+                          labelText: 'Computer / Workstation',
+                          helperText:
+                              'Select "General" if the problem affects the entire lab.',
+                          prefixIcon: const Icon(Icons.computer_outlined, size: 20),
+                          filled: true,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        items: <DropdownMenuItem<LabPc?>>[
+                          const DropdownMenuItem<LabPc?>(
+                            value: null,
+                            child: Text('General laboratory issue'),
+                          ),
+                          if (_room != null)
+                            ..._room!.pcs.map(
+                              (pc) => DropdownMenuItem<LabPc?>(
+                                value: pc,
+                                child: Text(
+                                  '${pc.name} • ${pc.status.toUpperCase()}',
+                                ),
+                              ),
+                            ),
+                        ],
+                        onChanged: _room == null || _sending
+                            ? null
+                            : (pc) => setState(() => _pc = pc),
+                      ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 16),
+
+                // Card 2: Issue Details
+                _buildCardContainer(
+                  scheme: scheme,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: <Widget>[
+                      _buildSectionTitle(
+                        scheme: scheme,
+                        stepNumber: '2',
+                        title: 'Problem Details',
+                        subtitle: 'Specify the issue category and describe what happened.',
+                      ),
+                      const SizedBox(height: 18),
+
+                      // Category Dropdown
+                      DropdownButtonFormField<String>(
+                        initialValue: _category,
+                        decoration: InputDecoration(
+                          labelText: 'Problem Category',
+                          prefixIcon:
+                              const Icon(Icons.category_outlined, size: 20),
+                          filled: true,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        items: _categories.entries
+                            .map(
+                              (entry) => DropdownMenuItem<String>(
+                                value: entry.key,
+                                child: Text(entry.value),
+                              ),
+                            )
+                            .toList(),
+                        onChanged: _sending
+                            ? null
+                            : (value) => setState(
+                                  () => _category = value ?? 'other',
+                                ),
+                      ),
+                      const SizedBox(height: 14),
+
+                      // Description Field
+                      TextFormField(
+                        controller: _description,
+                        enabled: !_sending,
+                        minLines: 3,
+                        maxLines: 6,
+                        maxLength: 1000,
+                        decoration: InputDecoration(
+                          labelText: 'Describe the problem',
+                          hintText:
+                              'Example: The keyboard spacebar is unresponsive or missing.',
+                          alignLabelWithHint: true,
+                          prefixIcon: const Padding(
+                            padding: EdgeInsets.only(bottom: 50),
+                            child: Icon(Icons.edit_note_outlined, size: 22),
+                          ),
+                          filled: true,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        validator: (value) {
+                          final text = (value ?? '').trim();
+                          if (text.length < 5) {
+                            return 'Please describe the issue in at least 5 characters.';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 12),
+
+                      // Evidence Photo Attachment Section
+                      _buildPhotoPicker(scheme),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 20),
+
+                // Primary Submit Button
+                SizedBox(
+                  height: 52,
+                  child: FilledButton(
+                    onPressed: _sending ? null : _submit,
+                    style: FilledButton.styleFrom(
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: _sending
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2.2),
+                          )
+                        : const Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: <Widget>[
+                              Icon(Icons.send_outlined, size: 19),
+                              SizedBox(width: 10),
+                              Text(
+                                'Submit Report',
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ── Header Card Banner ───────────────────────────────────────────────────
+  Widget _buildHeaderCard(ColorScheme scheme) {
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: scheme.primary.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: scheme.primary.withValues(alpha: 0.2),
+        ),
+      ),
+      child: Row(
+        children: <Widget>[
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: scheme.primary,
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              Icons.report_problem_outlined,
+              color: scheme.onPrimary,
+              size: 22,
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text(
+                  'Submit a Laboratory Report',
+                  style: TextStyle(
+                    color: scheme.onSurface,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'Report malfunctioning PC hardware, peripherals, or lab equipment to ITSO.',
+                  style: TextStyle(
+                    color: scheme.onSurfaceVariant,
+                    fontSize: 12.5,
+                    height: 1.35,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── Reusable Card Styling ────────────────────────────────────────────────
+  Widget _buildCardContainer({
+    required ColorScheme scheme,
+    required Widget child,
+  }) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: scheme.outlineVariant.withValues(alpha: 0.6),
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: child,
+      ),
+    );
+  }
+
+  Widget _buildSectionTitle({
+    required ColorScheme scheme,
+    required String stepNumber,
+    required String title,
+    required String subtitle,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Row(
+          children: <Widget>[
+            Container(
+              width: 22,
+              height: 22,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: scheme.primary,
+                shape: BoxShape.circle,
+              ),
+              child: Text(
+                stepNumber,
+                style: TextStyle(
+                  color: scheme.onPrimary,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Text(
+              title,
+              style: TextStyle(
+                color: scheme.onSurface,
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 4),
+        Padding(
+          padding: const EdgeInsets.only(left: 32),
+          child: Text(
+            subtitle,
+            style: TextStyle(
+              color: scheme.onSurfaceVariant,
+              fontSize: 12.5,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ── Evidence Photo Component ──────────────────────────────────────────────
+  Widget _buildPhotoPicker(ColorScheme scheme) {
+    if (_evidence == null) {
+      return InkWell(
+        onTap: _sending ? null : _chooseImageSource,
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+          decoration: BoxDecoration(
+            color: scheme.surface,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: scheme.outlineVariant.withValues(alpha: 0.6),
+              style: BorderStyle.solid,
+            ),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
             children: <Widget>[
-              const Icon(Icons.wifi_off_outlined, size: 52),
-              const SizedBox(height: 12),
-              Text(_loadError!, textAlign: TextAlign.center),
-              const SizedBox(height: 12),
-              FilledButton.icon(
-                onPressed: _loadLabs,
-                icon: const Icon(Icons.refresh),
-                label: const Text('Retry'),
+              Icon(
+                Icons.add_a_photo_outlined,
+                size: 20,
+                color: scheme.primary,
+              ),
+              const SizedBox(width: 10),
+              Text(
+                'Attach Photo Evidence (Optional)',
+                style: TextStyle(
+                  color: scheme.primary,
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ],
           ),
@@ -209,176 +755,43 @@ class _ReportProblemScreenState extends State<ReportProblemScreen> {
       );
     }
 
-    return Form(
-      key: _formKey,
-      child: ListView(
-        padding: const EdgeInsets.all(16),
-        children: <Widget>[
-          Text(
-            'Select the laboratory and computer with the problem.',
-            style: Theme.of(context).textTheme.bodyLarge,
-          ),
-          const SizedBox(height: 12),
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: <Widget>[
-                  Text(
-                    'Location',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w800,
-                        ),
-                  ),
-                  const SizedBox(height: 14),
-                  DropdownButtonFormField<LabRoom>(
-                    value: _room,
-                    isExpanded: true,
-                    decoration: const InputDecoration(labelText: 'Laboratory'),
-                    items: _rooms
-                        .map(
-                          (room) => DropdownMenuItem<LabRoom>(
-                            value: room,
-                            child: Text('Laboratory ${room.name}'),
-                          ),
-                        )
-                        .toList(),
-                    onChanged: _sending
-                        ? null
-                        : (room) => setState(() {
-                              _room = room;
-                              _pc = null;
-                            }),
-                    validator: (value) =>
-                        value == null ? 'Select a laboratory.' : null,
-                  ),
-                  const SizedBox(height: 12),
-                  DropdownButtonFormField<LabPc?>(
-                    value: _pc,
-                    isExpanded: true,
-                    decoration: const InputDecoration(
-                      labelText: 'Computer',
-                      helperText: 'Choose General only if the issue affects the laboratory rather than one PC.',
-                    ),
-                    items: <DropdownMenuItem<LabPc?>>[
-                      const DropdownMenuItem<LabPc?>(
-                        value: null,
-                        child: Text('General laboratory issue'),
-                      ),
-                      if (_room != null)
-                        ..._room!.pcs.map(
-                          (pc) => DropdownMenuItem<LabPc?>(
-                            value: pc,
-                            child: Text('${pc.name} • ${pc.status.toUpperCase()}'),
-                          ),
-                        ),
-                    ],
-                    onChanged: _room == null || _sending
-                        ? null
-                        : (pc) => setState(() => _pc = pc),
-                  ),
-                ],
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        ClipRRect(
+          borderRadius: BorderRadius.circular(12),
+          child: Stack(
+            alignment: Alignment.topRight,
+            children: <Widget>[
+              Image.file(
+                File(_evidence!.path),
+                height: 180,
+                width: double.infinity,
+                fit: BoxFit.cover,
               ),
-            ),
-          ),
-          const SizedBox(height: 12),
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: <Widget>[
-                  Text(
-                    'Problem Details',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w800,
-                        ),
+              Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: IconButton.filled(
+                  onPressed: _sending
+                      ? null
+                      : () => setState(() => _evidence = null),
+                  icon: const Icon(Icons.close_rounded, size: 18),
+                  style: IconButton.styleFrom(
+                    backgroundColor: Colors.black.withValues(alpha: 0.6),
+                    foregroundColor: Colors.white,
                   ),
-                  const SizedBox(height: 14),
-                  DropdownButtonFormField<String>(
-                    value: _category,
-                    decoration: const InputDecoration(labelText: 'Problem type'),
-                    items: _categories.entries
-                        .map(
-                          (entry) => DropdownMenuItem<String>(
-                            value: entry.key,
-                            child: Text(entry.value),
-                          ),
-                        )
-                        .toList(),
-                    onChanged: _sending
-                        ? null
-                        : (value) =>
-                            setState(() => _category = value ?? 'other'),
-                  ),
-                  const SizedBox(height: 12),
-                  TextFormField(
-                    controller: _description,
-                    enabled: !_sending,
-                    minLines: 4,
-                    maxLines: 7,
-                    maxLength: 1000,
-                    decoration: const InputDecoration(
-                      labelText: 'Describe the problem',
-                      hintText: 'Example: The keyboard spacebar is not responding.',
-                      alignLabelWithHint: true,
-                    ),
-                    validator: (value) {
-                      final text = (value ?? '').trim();
-                      if (text.length < 5) {
-                        return 'Describe the problem in at least 5 characters.';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 8),
-                  OutlinedButton.icon(
-                    onPressed: _sending ? null : _chooseImageSource,
-                    icon: const Icon(Icons.add_a_photo_outlined),
-                    label: Text(
-                      _evidence == null ? 'Add Photo Evidence' : 'Change Photo',
-                    ),
-                  ),
-                  if (_evidence != null) ...<Widget>[
-                    const SizedBox(height: 12),
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(12),
-                      child: Image.file(
-                        File(_evidence!.path),
-                        height: 180,
-                        fit: BoxFit.cover,
-                      ),
-                    ),
-                    TextButton.icon(
-                      onPressed: _sending
-                          ? null
-                          : () => setState(() => _evidence = null),
-                      icon: const Icon(Icons.delete_outline),
-                      label: const Text('Remove Photo'),
-                    ),
-                  ],
-                ],
+                ),
               ),
-            ),
+            ],
           ),
-          const SizedBox(height: 16),
-          FilledButton.icon(
-            onPressed: _sending ? null : _submit,
-            icon: _sending
-                ? const SizedBox.square(
-                    dimension: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(Icons.send_outlined),
-            label: const Padding(
-              padding: EdgeInsets.symmetric(vertical: 15),
-              child: Text('Submit Report'),
-            ),
-          ),
-          const SizedBox(height: 24),
-        ],
-      ),
+        ),
+        const SizedBox(height: 6),
+        TextButton.icon(
+          onPressed: _sending ? null : _chooseImageSource,
+          icon: const Icon(Icons.edit_outlined, size: 16),
+          label: const Text('Change photo'),
+        ),
+      ],
     );
   }
 }
