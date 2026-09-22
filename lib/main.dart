@@ -31,7 +31,7 @@ class SyswatchMobileApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Syswatch Mobile',
+      title: 'SysWatch Mobile',
       debugShowCheckedModeBanner: false,
       themeMode: ThemeMode.system,
       theme: ThemeData(
